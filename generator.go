@@ -61,7 +61,7 @@ func (g *Generator) CreateStructs() (structs map[string]Struct, err error) {
 		if err != nil {
 			errs = append(errs, err)
 		}
-		fields, err := getFields(typeKeyURI, v.Properties, types, v.Required)
+		fields, err := getFields(typeKeyURI, v.Properties, v.PatternProperties, types, v.Required)
 
 		if err != nil {
 			errs = append(errs, err)
@@ -120,11 +120,40 @@ func getOrderedKeyNamesFromSchemaMap(m map[string]*jsonschema.Schema) []string {
 }
 
 func getFields(parentTypeKey *url.URL, properties map[string]*jsonschema.Schema,
+	patternProperties map[string]*jsonschema.Schema,
 	types map[string]*jsonschema.Schema, requiredFields []string) (field map[string]Field, err error) {
 	fields := map[string]Field{}
 
 	missingTypes := []string{}
 	errors := []error{}
+
+	if patternProperties != nil {
+
+		i := 0
+		for k, v := range patternProperties {
+
+			golangName := fmt.Sprintf("Pattern%d", i)
+			tn, err := getTypeForField(parentTypeKey, k, golangName, v, types, true)
+			tn = "map[string]" + tn
+
+			if err != nil {
+				missingTypes = append(missingTypes, golangName)
+				errors = append(errors, err)
+			}
+
+			f := Field{
+				Name:     golangName,
+				JSONName: k,
+				// Look up the types, try references first, then drop to the built-in types.
+				Type:     tn,
+				Required: false,
+			}
+
+			fields[f.Name] = f
+
+			i++
+		}
+	}
 
 	for _, fieldName := range getOrderedKeyNamesFromSchemaMap(properties) {
 		v := properties[fieldName]

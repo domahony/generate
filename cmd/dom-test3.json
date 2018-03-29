@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "id": "Example",
+    "properties": {
+        "favouritecat": {
+            "enum": [ "A", "B", "C", "D", "E", "F" ],
+            "type": "string"
+        },
+        "subobject": {
+            "type": "object",
+            "properties": {
+                "subproperty1": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

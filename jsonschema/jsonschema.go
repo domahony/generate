@@ -17,6 +17,7 @@ type Schema struct {
 	Definitions          map[string]*Schema
 	Properties           map[string]*Schema
 	AdditionalProperties AdditionalProperties
+	PatternProperties    PatternProperties
 	Reference            string `json:"$ref"`
 	// Items represents the types that are permitted in the array.
 	Items     *Schema  `json:"items"`
@@ -48,6 +49,14 @@ func (s *Schema) Type() (firstOrDefault string, multiple bool) {
 				return
 			}
 		}
+	}
+
+	if len(s.Properties) > 0 {
+		return "object", false
+	}
+
+	if s.PatternProperties != nil {
+		return "object", false
 	}
 
 	return "", multiple
@@ -122,7 +131,7 @@ func addTypeAndChildrenToMap(path string, name string, s *Schema, types map[stri
 		return
 	}
 
-	if len(s.Properties) > 0 || t == "object" {
+	if len(s.Properties) > 0 || len(s.PatternProperties) > 0 || t == "object" {
 		types[path+namePrefix] = s
 	}
 
@@ -134,6 +143,13 @@ func addTypeAndChildrenToMap(path string, name string, s *Schema, types map[stri
 
 	if s.Properties != nil {
 		for k, d := range s.Properties {
+			// Only add the children as their own type if they have properties at all.
+			addTypeAndChildrenToMap(path+namePrefix+"/properties", k, d, types)
+		}
+	}
+
+	if s.PatternProperties != nil {
+		for k, d := range s.PatternProperties {
 			// Only add the children as their own type if they have properties at all.
 			addTypeAndChildrenToMap(path+namePrefix+"/properties", k, d, types)
 		}
@@ -164,6 +180,12 @@ func addReferencesToMap(s *Schema, m map[string]bool) {
 		}
 	}
 
+	if s.PatternProperties != nil {
+		for _, p := range s.PatternProperties {
+			addReferencesToMap(p, m)
+		}
+	}
+
 	if s.Items != nil {
 		addReferencesToMap(s.Items, m)
 	}
@@ -171,6 +193,9 @@ func addReferencesToMap(s *Schema, m map[string]bool) {
 
 // AdditionalProperties handles additional properties present in the JSON schema.
 type AdditionalProperties []*Schema
+
+// PatternProperties handles pattern properties present in the JSON schema.
+type PatternProperties map[string]*Schema
 
 // UnmarshalJSON handles unmarshalling AdditionalProperties from JSON.
 func (ap *AdditionalProperties) UnmarshalJSON(data []byte) error {
