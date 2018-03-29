@@ -533,3 +533,30 @@ func TestReturnedSchemaId(t *testing.T) {
 		}
 	}
 }
+
+func TestThatPatternPropertiesAreSupported(t *testing.T) {
+	s := `{
+        "$schema": "http://json-schema.org/draft-06/schema#",
+        "type": "object",
+        "properties": {
+            "/": {}
+        },
+        "patternProperties": {
+            "^(/[^/]+)+$": {}
+        }
+    }`
+
+	schema, err := Parse(s)
+
+	if err != nil {
+		t.Error("Error parsing schema")
+	}
+
+	if len(schema.PatternProperties) != 1 {
+		t.Error("Expected 1 pattern property")
+	}
+
+	if schema.PatternProperties["^(/[^/]+)+$"] == nil {
+		t.Error("Didn't find expected pattern property")
+	}
+}

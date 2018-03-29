@@ -61,7 +61,7 @@ func (g *Generator) CreateStructs() (structs map[string]Struct, err error) {
 		if err != nil {
 			errs = append(errs, err)
 		}
-		fields, err := getFields(typeKeyURI, v.Properties, types, v.Required)
+		fields, err := getFields(typeKeyURI, v.Properties, v.PatternProperties, types, v.Required)
 
 		if err != nil {
 			errs = append(errs, err)
@@ -120,11 +120,37 @@ func getOrderedKeyNamesFromSchemaMap(m map[string]*jsonschema.Schema) []string {
 }
 
 func getFields(parentTypeKey *url.URL, properties map[string]*jsonschema.Schema,
+	patternProperties map[string]*jsonschema.Schema,
 	types map[string]*jsonschema.Schema, requiredFields []string) (field map[string]Field, err error) {
 	fields := map[string]Field{}
 
 	missingTypes := []string{}
 	errors := []error{}
+
+	if patternProperties != nil {
+
+		for k, v := range patternProperties {
+
+			golangName := v.PatternName
+			tn, err := getTypeForField(parentTypeKey, k, golangName, v, types, true)
+			tn = "map[string]" + tn
+
+			if err != nil {
+				missingTypes = append(missingTypes, golangName)
+				errors = append(errors, err)
+			}
+
+			f := Field{
+				Name:     golangName,
+				JSONName: k,
+				// Look up the types, try references first, then drop to the built-in types.
+				Type:     tn,
+				Required: false,
+			}
+
+			fields[f.Name] = f
+		}
+	}
 
 	for _, fieldName := range getOrderedKeyNamesFromSchemaMap(properties) {
 		v := properties[fieldName]
@@ -217,7 +243,12 @@ func getTypeForField(parentTypeKey *url.URL, fieldName string, fieldGoName strin
 				sn := getStructName(ref, parentType, 1)
 				subType = sn
 			} else {
-				subType = "undefined"
+				ref := joinURLFragmentPath(parentTypeKey, "patternProperties/"+fieldName)
+				if t, ok := types[ref.String()]; ok {
+					subType = t.PatternName
+				} else {
+					subType = "undefined"
+				}
 			}
 		}
 	}
@@ -283,6 +314,8 @@ func getPrimitiveTypeName(schemaType string, subType string, pointer bool) (name
 func getStructName(reference *url.URL, structType *jsonschema.Schema, n int) string {
 	if len(structType.Title) > 0 {
 		return getGolangName(structType.Title)
+	} else if len(structType.PatternName) > 0 {
+		return getGolangName(structType.PatternName)
 	}
 
 	if reference.Fragment == "" {

@@ -106,7 +106,7 @@ func TestFieldGeneration(t *testing.T) {
 	}
 
 	requiredFields := []string{"property2"}
-	result, err := getFields(&url.URL{}, properties, lookupTypes, requiredFields)
+	result, err := getFields(&url.URL{}, properties, nil, lookupTypes, requiredFields)
 
 	if err != nil {
 		t.Error("Failed to get the fields: ", err)
@@ -147,7 +147,7 @@ func TestFieldGenerationWithArrayReferences(t *testing.T) {
 	}
 
 	requiredFields := []string{"property2"}
-	result, err := getFields(&url.URL{}, properties, lookupTypes, requiredFields)
+	result, err := getFields(&url.URL{}, properties, nil, lookupTypes, requiredFields)
 
 	if err != nil {
 		t.Error("Failed to get the fields: ", err)
@@ -160,6 +160,67 @@ func TestFieldGenerationWithArrayReferences(t *testing.T) {
 	testField(result["Property1"], "property1", "Property1", "string", false, t)
 	testField(result["Property2"], "property2", "Property2", "[]Address", true, t)
 	testField(result["Property3"], "property3", "Property3", "[]map[string]int", false, t)
+}
+
+func TestFieldGenerationWithPatternProperties(t *testing.T) {
+
+	objProp := jsonschema.Schema{
+		TypeValue:   "object",
+		PatternName: "p3",
+		Properties: map[string]*jsonschema.Schema{
+			"subproperty1": {TypeValue: "string"},
+		},
+	}
+
+	patternProperties := map[string]*jsonschema.Schema{
+		"numProp?": {TypeValue: "number", PatternName: "p1"},
+		"strProp?": {TypeValue: "string", PatternName: "p2"},
+		"objProp?": &objProp,
+		"refProp?": {
+			TypeValue:   "object",
+			Reference:   "myref",
+			PatternName: "p4",
+		},
+	}
+
+	lookupTypes := map[string]*jsonschema.Schema{
+		"/myref":                       {Title: "AnotherSchema"},
+		"#/patternProperties/objProp?": &objProp,
+	}
+
+	result, err := getFields(&url.URL{}, nil, patternProperties, lookupTypes, nil)
+
+	if err != nil {
+		t.Error("Failed to get the fields: ", err)
+	}
+
+	if len(result) != 4 {
+		t.Errorf("Expected 4 results, but got %d results", len(result))
+	}
+
+	expectedResults := map[string]*struct {
+		golangtype string
+	}{
+		"numProp?": {
+			golangtype: "map[string]float64",
+		},
+		"strProp?": {
+			golangtype: "map[string]string",
+		},
+		"objProp?": {
+			golangtype: "map[string]*p3",
+		},
+		"refProp?": {
+			golangtype: "map[string]*AnotherSchema",
+		},
+	}
+
+	for _, v := range result {
+		if e := expectedResults[v.JSONName]; e != nil {
+			testField(v, v.JSONName, v.Name, e.golangtype, false, t)
+		}
+
+	}
 }
 
 func testField(actual Field, expectedJSONName string, expectedName string, expectedType string, expectedToBeRequired bool, t *testing.T) {
