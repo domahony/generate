@@ -199,6 +199,10 @@ func getTypeForField(parentTypeKey *url.URL, fieldName string, fieldGoName strin
 		}
 	}
 
+	if len(majorType) == 0 && len(fieldSchema.Properties) > 0 {
+		majorType = "object"
+	}
+
 	// Look up any embedded types.
 	if subType == "" && majorType == "object" {
 		if len(fieldSchema.Properties) == 0 && len(fieldSchema.AdditionalProperties) > 0 {

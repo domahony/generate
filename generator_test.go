@@ -624,6 +624,33 @@ func TestThatUnmarshallingIsPossible(t *testing.T) {
 	}
 }
 
+func TestTypeNotSetForObject(t *testing.T) {
+
+	nested := &jsonschema.Schema{}
+	nested.Properties = map[string]*jsonschema.Schema{
+		"nestedp1": {TypeValue: "string"},
+	}
+
+	root := &jsonschema.Schema{}
+	root.Title = "Object with nested properties"
+	root.Properties = map[string]*jsonschema.Schema{
+		"nested": nested,
+	}
+
+	g := New(root)
+	results, err := g.CreateStructs()
+
+	if err != nil {
+		t.Errorf("Error generating structs: %v", err)
+	}
+
+	nestedType := results["ObjectWithNestedProperties"].Fields["Nested"].Type
+
+	if nestedType != "*Nested" {
+		t.Errorf("Expected nested type *Nested but got: %v", nestedType)
+	}
+}
+
 // Root is an example of a generated type.
 type Root struct {
 	Name interface{} `json:"name,omitempty"`
