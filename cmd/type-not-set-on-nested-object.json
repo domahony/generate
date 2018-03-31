@@ -1,0 +1,28 @@
+{
+    "$schema" : "http://json-schema.org/draft-04/schema",
+    "id" : "outer.json",
+    "title" : "Outer",
+    "type" : "object",
+    "description" : "An outer object",
+    "properties" : {
+        "p1" : {
+            "type" : "string"
+        },
+        "nested" : {
+            "description": "Some nested properties",
+            "properties" : {
+                "nestedp1": {
+                    "type": "string"
+                },
+                "nestedp2": {
+                    "type": "string"
+                }
+            }
+        },
+        "p2" : {
+            "type" : "number"
+        }
+    },
+    "required" : ["p1", "nested"],
+    "additionalProperties" : false
+}
