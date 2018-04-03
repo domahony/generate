@@ -107,6 +107,9 @@ func TestFieldGeneration(t *testing.T) {
 
 	requiredFields := []string{"property2"}
 	result, err := getFields(&url.URL{}, properties, lookupTypes, requiredFields)
+	//parentType, _ := url.Parse("/schema.json")
+
+	//result, err := getFields(parentType, properties, lookupTypes, requiredFields)
 
 	if err != nil {
 		t.Error("Failed to get the fields: ", err)

@@ -67,7 +67,7 @@ func (g *Generator) CreateStructs() (structs map[string]Struct, err error) {
 			errs = append(errs, err)
 		}
 
-		structName := getStructName(typeKeyURI, v, 1)
+		var structName = getStructNameFromURI(typeKeyURI, v, types)
 
 		if err != nil {
 			errs = append(errs, err)
@@ -92,6 +92,36 @@ func (g *Generator) CreateStructs() (structs map[string]Struct, err error) {
 	}
 
 	return structs, nil
+}
+
+func getStructNameFromURI(typeKeyURI *url.URL, parentType *jsonschema.Schema, types map[string]*jsonschema.Schema) string {
+	//XXX TODO need to ensure references don't generate new types - not sure what this comment means anymore
+
+	//XXX not comfortable with this method - unit tests pass, and my particular use case work (so far)
+	if parentType.Title != "" {
+		return getStructName(typeKeyURI, parentType, 1)
+	}
+
+	var structName = ""
+	parentSchema := types[typeKeyURI.Path]
+	if parentSchema != nil {
+		structName = parentSchema.Title
+	}
+
+	if len(typeKeyURI.Fragment) > 0 {
+
+		for i, part := range strings.Split(typeKeyURI.Fragment, "/") {
+			if i%2 == 0 {
+				structName = fmt.Sprintf("%s%s", structName, getGolangName(part))
+			}
+		}
+
+		structName = getGolangName(structName)
+	} else {
+		structName = getStructName(typeKeyURI, parentType, 1)
+	}
+
+	return structName
 }
 
 func joinErrors(errs []error) string {
@@ -218,7 +248,7 @@ func getTypeForField(parentTypeKey *url.URL, fieldName string, fieldGoName strin
 		} else {
 			ref := joinURLFragmentPath(parentTypeKey, "properties/"+fieldName)
 			if parentType, ok := types[ref.String()]; ok {
-				sn := getStructName(ref, parentType, 1)
+				sn := getStructNameFromURI(ref, parentType, types)
 				subType = sn
 			} else {
 				subType = "undefined"
