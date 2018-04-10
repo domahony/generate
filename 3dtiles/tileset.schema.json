@@ -8,13 +8,21 @@
         "asset" : {
             "$ref" : "asset.schema.json"
         },
-        "px" : {
+        "properties" : {
             "description": "A dictionary object of metadata about per-feature properties.",
-            "properties": {
-                "prop1" : {
+            "patternProperties" : {
+                ".*": {
+                    "$ref": "properties.schema.json"
+                }
+            }
+        },
+        "properties2" : {
+            "description": "A dictionary object of metadata about per-feature properties.",
+            "properties" : {
+                "p1": {
                     "$ref": "properties.schema.json"
                 },
-                "prop2" : {
+                "p2": {
                     "$ref": "properties.schema.json"
                 }
             }

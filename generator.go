@@ -61,7 +61,7 @@ func (g *Generator) CreateStructs() (structs map[string]Struct, err error) {
 		if err != nil {
 			errs = append(errs, err)
 		}
-		fields, err := getFields(typeKeyURI, v.Properties, types, v.Required)
+		fields, err := getFields(typeKeyURI, v.Properties, v.PatternProperties, types, v.Required)
 
 		if err != nil {
 			errs = append(errs, err)
@@ -149,7 +149,7 @@ func getOrderedKeyNamesFromSchemaMap(m map[string]*jsonschema.Schema) []string {
 	return keys
 }
 
-func getFields(parentTypeKey *url.URL, properties map[string]*jsonschema.Schema,
+func getFields(parentTypeKey *url.URL, properties map[string]*jsonschema.Schema, patternProperties map[string]*jsonschema.Schema,
 	types map[string]*jsonschema.Schema, requiredFields []string) (field map[string]Field, err error) {
 	fields := map[string]Field{}
 
@@ -229,13 +229,17 @@ func getTypeForField(parentTypeKey *url.URL, fieldName string, fieldGoName strin
 		}
 	}
 
-	if len(majorType) == 0 && len(fieldSchema.Properties) > 0 {
+	if len(majorType) == 0 && (len(fieldSchema.Properties) > 0 || len(fieldSchema.PatternProperties) > 0) {
 		majorType = "object"
 	}
 
 	// Look up any embedded types.
 	if subType == "" && majorType == "object" {
+
+		// need to look at fieldSchema.PatternProperties
+
 		if len(fieldSchema.Properties) == 0 && len(fieldSchema.AdditionalProperties) > 0 {
+
 			if len(fieldSchema.AdditionalProperties) == 1 {
 				sn, _ := getTypeForField(parentTypeKey, fieldName, fieldGoName,
 					fieldSchema.AdditionalProperties[0], types, pointer)
@@ -245,6 +249,12 @@ func getTypeForField(parentTypeKey *url.URL, fieldName string, fieldGoName strin
 				subType = "map[string]interface{}"
 				pointer = false
 			}
+
+		} else if len(fieldSchema.PatternProperties) > 0 {
+
+			subType = "map[string]interface{}"
+			pointer = false
+
 		} else {
 			ref := joinURLFragmentPath(parentTypeKey, "properties/"+fieldName)
 			if parentType, ok := types[ref.String()]; ok {

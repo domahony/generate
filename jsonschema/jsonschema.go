@@ -35,6 +35,7 @@ type Schema struct {
 	Properties           map[string]*Schema
 	Required             []string
 	AdditionalProperties AdditionalProperties
+	PatternProperties    PatternProperties
 
 	// Reference is a URI reference to a schema.
 	// http://json-schema.org/draft-07/json-schema-core.html#rfc.section.8
@@ -155,7 +156,7 @@ func addTypeAndChildrenToMap(path string, name string, s *Schema, types map[stri
 		return
 	}
 
-	if len(s.Properties) > 0 || t == "object" {
+	if len(s.Properties) > 0 || len(s.PatternProperties) > 0 || t == "object" {
 		types[path+namePrefix] = s
 	}
 
@@ -169,6 +170,13 @@ func addTypeAndChildrenToMap(path string, name string, s *Schema, types map[stri
 		for k, d := range s.Properties {
 			// Only add the children as their own type if they have properties at all.
 			addTypeAndChildrenToMap(path+namePrefix+"/properties", k, d, types)
+		}
+	}
+
+	if s.PatternProperties != nil {
+		for k, d := range s.PatternProperties {
+			// Only add the children as their own type if they have properties at all.
+			addTypeAndChildrenToMap(path+namePrefix+"/patternProperties", k, d, types)
 		}
 	}
 }
@@ -229,4 +237,17 @@ func (ap *AdditionalProperties) UnmarshalJSON(data []byte) error {
 		*ap = append(*ap, &s)
 	}
 	return err
+}
+
+type PatternProperties map[string]*Schema
+
+func (ap *PatternProperties) UnmarshalJSON(data []byte) error {
+
+	a := map[string]*Schema{}
+
+	if err := json.Unmarshal(data, &a); err == nil {
+		*ap = a
+	}
+
+	return nil
 }
